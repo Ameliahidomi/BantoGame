@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -102,20 +101,42 @@ let roomId, userId, empId;
 let interval = null;
 
 /* ---------- 4. 進房 ---------- */
+/* ---------- 允許登入的工號清單 ---------- */
+const validEmpIds = [
+  "091001","086004","091008","095006","100013","100028","106005","110001","110103","111007","111050",
+  "111080","112003","113025","113032","114022","110063","111018","094010","C00079","111053","114019"  // ← 換成你自己的6碼工號
+];
+
+/* ---------- 4. 進房 (含驗證) ---------- */
 el.joinBtn.onclick = () => {
   empId = el.empId.value.trim();
-  if(!empId){alert("請輸入工號");return;}
+
+  // ① 檢查是否為 6 碼數字
+  if(!/^\d{6}$/.test(empId)){
+    alert("工號必須是 6 位數字");
+    return;
+  }
+
+  // ② 檢查是否在允許名單中
+  if(!validEmpIds.includes(empId)){
+    alert("此工號不在允許名單內");
+    return;
+  }
+
+  // ③ 通過驗證才進房
   roomId = el.roomInput.value.trim() || randomId();
   userId = "u_" + Math.random().toString(36).slice(2,9);
   el.login.style.display="none";
   el.game.style.display="block";
   el.roomDisplay.textContent = roomId;
+
   // presence
   const pres = db.ref(`rooms/${roomId}/users/${userId}`);
   pres.set({empId});
   pres.onDisconnect().remove();
   listenRoom();
 };
+
 
 function randomId(len=6){
   const c="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let s="";
