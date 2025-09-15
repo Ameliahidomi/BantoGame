@@ -21,6 +21,27 @@ h1{color:#ff7043;margin-bottom:8px;}
   background:#ffe0b2;
   transition:background 0.2s;
 }
+/* ====== 右側浮動在線人員小視窗 ====== */
+#onlineBox{
+  position: fixed;
+  top: 100px;
+  right: 20px;
+  width: 180px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  font-size: 0.9rem;
+  text-align: left;
+  z-index: 999;
+}
+#onlineBox h3{
+  margin-top: 0;
+  font-size: 1rem;
+  color: #ff7043;
+  text-align: center;
+}
 button{
   background:#ff7043;color:#fff;border:0;
   padding:12px 24px;margin:6px;border-radius:10px;
@@ -51,6 +72,10 @@ button{
   <div id="current">等待開始…</div>
   <button id="startBtn">開始</button>
   <button id="stopBtn" disabled>停止</button>
+
+  <!-- 新增：在線人員清單 -->
+  <div id="userList"></div>
+
   <div id="history"></div>
 </div>
 
@@ -88,6 +113,7 @@ const el = {
   joinBtn: document.getElementById('joinBtn'),
   roomInput: document.getElementById('roomInput'),
   login: document.getElementById('login'),
+  userList: document.getElementById('userList'),
   game: document.getElementById('game'),
   roomDisplay: document.getElementById('roomDisplay'),
   current: document.getElementById('current'),
@@ -148,21 +174,26 @@ function randomId(len=6){
 function listenRoom(){
   db.ref(`rooms/${roomId}`).on('value', snap=>{
     const data = snap.val()||{};
-    // 目前剩餘清單
     if(!data.remaining){
       db.ref(`rooms/${roomId}/remaining`).set(allRestaurants);
       return;
     }
-    // 更新歷史
     renderHistory(data.history||[]);
-    // 若有人正在跑動畫
     if(data.playing){
       startAnimation(data.remaining);
     }else{
       stopAnimation(data.current);
     }
   });
+
+  // ✅ 新增：監聽在線人員
+  db.ref(`rooms/${roomId}/users`).on('value', snap=>{
+    const users = snap.val() || {};
+    const list = Object.values(users).map(u => u.empId);
+    el.userList.innerHTML = "<h3>在線人員</h3>" + list.join(", ");
+  });
 }
+
 
 /* ---------- 6. 開始/停止 ---------- */
 el.startBtn.onclick = async ()=>{
@@ -223,6 +254,7 @@ function renderHistory(list){
     i=>`<div class="history-item">${new Date(i.time).toLocaleTimeString()}：${i.name}</div>`
   ).join('');
 }
+
 </script>
 </body>
 </html>
