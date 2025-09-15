@@ -181,10 +181,13 @@ function randomId(len=6){
 function listenRoom(){
   db.ref(`rooms/${roomId}`).on('value', snap=>{
     const data = snap.val()||{};
-    if(!data.remaining){
-      db.ref(`rooms/${roomId}/remaining`).set(allRestaurants);
-      return;
-    }
+if (!data.remaining) {
+    db.ref(`rooms/${roomId}`).update({
+        remaining: allRestaurants,
+        playing: false   // ← 確保初始值為 false
+    });
+    return;
+}
     renderHistory(data.history||[]);
     if(data.playing){
       startAnimation(data.remaining);
