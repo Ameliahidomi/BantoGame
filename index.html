@@ -2,8 +2,8 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>今天要吃哪一家</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🍱今天要吃哪一家🍱</title>
 <style>
 body{
   font-family: 'Noto Sans TC',sans-serif;
@@ -13,21 +13,23 @@ body{
 }
 h1{color:#ff7043;margin-bottom:8px;}
 
+/* 中央顯示餐廳名稱 */
 #current{
   display:inline-block;
-  min-width:300px;      /* 最小寬度可自行調整 */
-  max-width:90%;        /* 避免太長時撐破螢幕 */
+  min-width:300px;
+  max-width:90%;
   width:500px;
-  padding:20px 40px;    /* 內邊距維持好看 */
+  padding:20px 40px;
   margin:40px auto;
   border-radius:16px;
   background:#ffe0b2;
   transition:background 0.2s;
   text-align:center;
-  font-size:3.5rem;
+  font-size:clamp(2rem, 5vw, 4rem); /* 隨螢幕自動 */
+  font-weight:bold;
 }
 
-/* ====== 右側浮動在線人員小視窗 ====== */
+/* 右側浮動在線人員小視窗 */
 #onlineBox{
   position: fixed;
   top: 100px;
@@ -51,7 +53,8 @@ h1{color:#ff7043;margin-bottom:8px;}
 button{
   background:#ff7043;color:#fff;border:0;
   padding:12px 24px;margin:6px;border-radius:10px;
-  font-size:1.2rem;cursor:pointer;
+  font-size:clamp(1rem, 2.5vw, 1.4rem);
+  cursor:pointer;
 }
 #history{
   margin-top:30px;
@@ -61,16 +64,26 @@ button{
 }
 .history-item{padding:6px 0;border-bottom:1px solid #ddd;}
 #login{margin-bottom:20px;}
+
+/* RWD：手機螢幕時將小視窗移到下方置中 */
+@media (max-width: 768px){
+  #onlineBox{
+    position: static;
+    width: 90%;
+    margin: 20px auto;
+    font-size: 1rem;
+  }
+}
 </style>
 </head>
 <body>
 
-<h1>今天要吃哪一家</h1>
+<h1>🍱今天要吃哪一家🍱</h1>
 
 <div id="login">
-  <input id="empId" placeholder="輸入工號" />
-  <button id="joinBtn">加入房間</button>
+  <input id="empId" placeholder="輸入工號(6碼數字)" />
   <input id="roomInput" placeholder="房間ID (可自訂或留空)" />
+  <button id="joinBtn">加入房間</button>
 </div>
 
 <div id="game" style="display:none;">
@@ -81,6 +94,7 @@ button{
   <div id="history"></div>
 </div>
 
+<!-- 右側小視窗 -->
 <div id="onlineBox">
   <h3>在線人員</h3>
   <div id="userList"></div>
@@ -91,7 +105,7 @@ button{
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
-/* ---------- 1. Firebase 設定：請換成你的 ---------- */
+/* ---------- Firebase 設定 ---------- */
 const firebaseConfig = {
   apiKey: "AIzaSyB0ZBdT2Pq1tawP-L260DRyItt444jg8LI",
   authDomain: "bantogame.firebaseapp.com",
@@ -105,7 +119,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-/* ---------- 2. 餐廳清單 ---------- */
+/* ---------- 餐廳清單 ---------- */
 const allRestaurants = [...new Set(`
 灶蹄蹤堂,一夫排骨,老周燒肉飯,大寮牛肉麵,福園餡餅粥,林家涼麵,花の壽司,冠宏涼麵,古早魏,古糧碳烤三明治,江鳥紅,武村風味便當,
 大咖咖哩,東港飯湯,便當爺爺,真心食坊,越錦食堂,今年貴羹,阿昇廚房,大廟口鹽水雞,鳳林山西刀削麵,八兩五骨鴨,寶麗點心廚房,
@@ -114,7 +128,7 @@ const allRestaurants = [...new Set(`
 華新牛排,阿爸的飯,阿德飯店,嘉昌火雞肉飯,今日鴻,曉食記,香檳之城,萬客臨,郭記土魠魚羹,勁請享用,柒零年代
 `.split(','))];
 
-/* ---------- 3. DOM 參照 ---------- */
+/* ---------- DOM 參照 ---------- */
 const el = {
   empId: document.getElementById('empId'),
   joinBtn: document.getElementById('joinBtn'),
@@ -133,43 +147,32 @@ const el = {
 let roomId, userId, empId;
 let interval = null;
 
-/* ---------- 4. 進房 ---------- */
-/* ---------- 允許登入的工號清單 ---------- */
-const validEmpIds = [
-  "091001","086004","091008","095006","100013","100028","106005","110001","110103","111007","111050",
-  "111080","112003","113025","113032","114022","110063","111018","094010","C00079","111053","114019"  // ← 換成你自己的6碼工號
-];
+/* ---------- 工號名單 ---------- */
+const validEmpIds = ["091001","086004","091008","095006","100013","100028","106005","110001","110103","111007","111050",
+  "111080","112003","113025","113032","114022","110063","111018","094010","C00079","111053","114019"];
 
-/* ---------- 4. 進房 (含驗證) ---------- */
+/* ---------- 進房 (驗證) ---------- */
 el.joinBtn.onclick = () => {
   empId = el.empId.value.trim();
-
-  // ① 檢查是否為 6 碼數字
   if(!/^\d{6}$/.test(empId)){
     alert("工號必須是 6 位數字");
     return;
   }
-
-  // ② 檢查是否在允許名單中
   if(!validEmpIds.includes(empId)){
     alert("此工號不在允許名單內");
     return;
   }
-
-  // ③ 通過驗證才進房
   roomId = el.roomInput.value.trim() || randomId();
   userId = "u_" + Math.random().toString(36).slice(2,9);
   el.login.style.display="none";
   el.game.style.display="block";
   el.roomDisplay.textContent = roomId;
 
-  // presence
   const pres = db.ref(`rooms/${roomId}/users/${userId}`);
   pres.set({empId});
   pres.onDisconnect().remove();
   listenRoom();
 };
-
 
 function randomId(len=6){
   const c="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let s="";
@@ -177,17 +180,17 @@ function randomId(len=6){
   return s;
 }
 
-/* ---------- 5. 監聽房間狀態 ---------- */
+/* ---------- 監聽房間狀態 ---------- */
 function listenRoom(){
   db.ref(`rooms/${roomId}`).on('value', snap=>{
     const data = snap.val()||{};
-if (!data.remaining) {
-    db.ref(`rooms/${roomId}`).update({
-        remaining: allRestaurants,
-        playing: false   // ← 確保初始值為 false
-    });
-    return;
-}
+    if (!data.remaining) {
+      db.ref(`rooms/${roomId}`).update({
+          remaining: allRestaurants,
+          playing: false   // 確保初始為 false
+      });
+      return;
+    }
     renderHistory(data.history||[]);
     if(data.playing){
       startAnimation(data.remaining);
@@ -195,17 +198,14 @@ if (!data.remaining) {
       stopAnimation(data.current);
     }
   });
-
-  // ✅ 新增：監聽在線人員
   db.ref(`rooms/${roomId}/users`).on('value', snap=>{
     const users = snap.val() || {};
     const list = Object.values(users).map(u => u.empId);
-    el.userList.innerHTML = "<h3>在線人員</h3>" + list.join(", ");
+    el.userList.innerHTML = list.length ? list.join("<br>") : "<em>無人</em>";
   });
 }
 
-
-/* ---------- 6. 開始/停止 ---------- */
+/* ---------- 開始/停止 ---------- */
 el.startBtn.onclick = async ()=>{
   const rSnap = await db.ref(`rooms/${roomId}/remaining`).once('value');
   const remain = rSnap.val()||[];
@@ -232,7 +232,7 @@ el.stopBtn.onclick = async ()=>{
   });
 };
 
-/* ---------- 7. 動畫顯示 ---------- */
+/* ---------- 動畫 ---------- */
 function startAnimation(pool){
   el.startBtn.disabled = true;
   el.stopBtn.disabled = false;
@@ -258,13 +258,12 @@ function randomColor(){
   return colors[Math.floor(Math.random()*colors.length)];
 }
 
-/* ---------- 8. 歷史顯示 ---------- */
+/* ---------- 歷史紀錄 ---------- */
 function renderHistory(list){
   el.history.innerHTML = "<h3>歷史抽選</h3>" + list.map(
     i=>`<div class="history-item">${new Date(i.time).toLocaleTimeString()}：${i.name}</div>`
   ).join('');
 }
-
 </script>
 </body>
 </html>
