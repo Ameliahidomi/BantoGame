@@ -12,8 +12,6 @@ body{
   padding:20px;
 }
 h1{color:#ff7043;margin-bottom:8px;}
-
-/* 中央顯示餐廳名稱 */
 #current{
   display:inline-block;
   min-width:300px;
@@ -25,11 +23,9 @@ h1{color:#ff7043;margin-bottom:8px;}
   background:#ffe0b2;
   transition:background 0.2s;
   text-align:center;
-  font-size:clamp(2rem, 5vw, 4rem); /* 隨螢幕自動 */
+  font-size:clamp(2rem, 5vw, 4rem);
   font-weight:bold;
 }
-
-/* 右側浮動在線人員小視窗 */
 #onlineBox{
   position: fixed;
   top: 100px;
@@ -64,8 +60,6 @@ button{
 }
 .history-item{padding:6px 0;border-bottom:1px solid #ddd;}
 #login{margin-bottom:20px;}
-
-/* RWD：手機螢幕時將小視窗移到下方置中 */
 @media (max-width: 768px){
   #onlineBox{
     position: static;
@@ -82,7 +76,7 @@ button{
 
 <div id="login">
   <input id="empId" placeholder="輸入工號(6碼數字)" />
-  <input id="roomInput" placeholder="房間ID (可自訂或留空)" />
+  <input id="roomInput" placeholder="房間ID (需在指定名單內)" />
   <button id="joinBtn">加入房間</button>
 </div>
 
@@ -94,7 +88,6 @@ button{
   <div id="history"></div>
 </div>
 
-<!-- 右側小視窗 -->
 <div id="onlineBox">
   <h3>在線人員</h3>
   <div id="userList"></div>
@@ -119,6 +112,11 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+/* ---------- 白名單 ---------- */
+const validEmpIds = ["091001","086004","091008","095006","100013","100028","106005","110001","110103","111007","111050",
+  "111080","112003","113025","113032","114022","110063","111018","094010","C00079","111053","114019"];       // 允許的工號
+const allowedRooms = ["CTC"];    // 允許的房間名稱
+
 /* ---------- 餐廳清單 ---------- */
 const allRestaurants = [...new Set(`
 灶蹄蹤堂,一夫排骨,老周燒肉飯,大寮牛肉麵,福園餡餅粥,林家涼麵,花の壽司,冠宏涼麵,古早魏,古糧碳烤三明治,江鳥紅,武村風味便當,
@@ -128,7 +126,7 @@ const allRestaurants = [...new Set(`
 華新牛排,阿爸的飯,阿德飯店,嘉昌火雞肉飯,今日鴻,曉食記,香檳之城,萬客臨,郭記土魠魚羹,勁請享用,柒零年代,巷尾肉圓
 `.split(','))];
 
-/* ---------- DOM 參照 ---------- */
+/* ---------- DOM ---------- */
 const el = {
   empId: document.getElementById('empId'),
   joinBtn: document.getElementById('joinBtn'),
@@ -147,11 +145,7 @@ const el = {
 let roomId, userId, empId;
 let interval = null;
 
-/* ---------- 工號名單 ---------- */
-const validEmpIds = ["091001","086004","091008","095006","100013","100028","106005","110001","110103","111007","111050",
-  "111080","112003","113025","113032","114022","110063","111018","094010","C00079","111053","114019"];
-
-/* ---------- 進房 (驗證) ---------- */
+/* ---------- 進房 ---------- */
 el.joinBtn.onclick = () => {
   empId = el.empId.value.trim();
   if(!/^\d{6}$/.test(empId)){
@@ -162,8 +156,15 @@ el.joinBtn.onclick = () => {
     alert("此工號不在允許名單內");
     return;
   }
-  roomId = el.roomInput.value.trim() || randomId();
+
+  const inputRoom = el.roomInput.value.trim();
+  if(!allowedRooms.includes(inputRoom)){
+    alert("房間名稱必須為指定名單");
+    return;
+  }
+  roomId = inputRoom;
   userId = "u_" + Math.random().toString(36).slice(2,9);
+
   el.login.style.display="none";
   el.game.style.display="block";
   el.roomDisplay.textContent = roomId;
@@ -174,30 +175,34 @@ el.joinBtn.onclick = () => {
   listenRoom();
 };
 
-function randomId(len=6){
-  const c="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let s="";
-  for(let i=0;i<len;i++)s+=c[Math.floor(Math.random()*c.length)];
-  return s;
-}
-
 /* ---------- 監聽房間狀態 ---------- */
 function listenRoom(){
-  db.ref(`rooms/${roomId}`).on('value', snap=>{
+  const roomRef = db.ref(`rooms/${roomId}`);
+  roomRef.on('value', snap=>{
     const data = snap.val()||{};
     if (!data.remaining) {
-      db.ref(`rooms/${roomId}`).update({
-          remaining: allRestaurants,
-          playing: false   // 確保初始為 false
-      });
+      roomRef.update({ remaining: allRestaurants, playing: false, playSound:false });
       return;
     }
     renderHistory(data.history||[]);
-    if(data.playing){
+    if(data.playing === true){
       startAnimation(data.remaining);
-    }else{
+    } else {
       stopAnimation(data.current);
     }
   });
+
+  // 監聽音效同步
+  db.ref(`rooms/${roomId}/playSound`).on('value', s=>{
+    if(s.val() === true){
+      el.sound.currentTime=0;
+      el.sound.play();
+      // 播放後立即重設，避免重複觸發
+      db.ref(`rooms/${roomId}/playSound`).set(false);
+    }
+  });
+
+  // 在線人員
   db.ref(`rooms/${roomId}/users`).on('value', snap=>{
     const users = snap.val() || {};
     const list = Object.values(users).map(u => u.empId);
@@ -213,9 +218,10 @@ el.startBtn.onclick = async ()=>{
     await db.ref(`rooms/${roomId}`).update({remaining: allRestaurants, history: []});
     return;
   }
-  el.sound.currentTime=0; el.sound.play();
-  db.ref(`rooms/${roomId}`).update({playing:true});
+  // 觸發所有人播放音效
+  db.ref(`rooms/${roomId}`).update({playing:true, playSound:true});
 };
+
 el.stopBtn.onclick = async ()=>{
   const rSnap = await db.ref(`rooms/${roomId}/remaining`).once('value');
   const remain = rSnap.val()||[];
@@ -248,7 +254,6 @@ function stopAnimation(finalName){
   el.stopBtn.disabled = true;
   if(interval){ clearInterval(interval); interval=null; }
   if(finalName){
-    el.sound.pause();
     el.current.textContent = "🎉 " + finalName + " 🎉";
     el.current.style.background = "#c8e6c9";
   }
@@ -257,10 +262,8 @@ function randomColor(){
   const colors=["#ffe0b2","#c8e6c9","#bbdefb","#ffcdd2","#d1c4e9"];
   return colors[Math.floor(Math.random()*colors.length)];
 }
-
-/* ---------- 歷史紀錄 ---------- */
 function renderHistory(list){
-  el.history.innerHTML = "<h3>中獎名單</h3>" + list.map(
+  el.history.innerHTML = "<h3>歷史抽選</h3>" + list.map(
     i=>`<div class="history-item">${new Date(i.time).toLocaleTimeString()}：${i.name}</div>`
   ).join('');
 }
