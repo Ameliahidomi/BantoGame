@@ -261,11 +261,12 @@ function randomColor(){
   return colors[Math.floor(Math.random()*colors.length)];
 }
 function renderHistory(list){
-  el.history.innerHTML = "<h3>歷史抽選</h3>" + list.map(
+  el.history.innerHTML = "<h3>中獎名單</h3>" + list.map(
     i=>`<div class="history-item">${new Date(i.time).toLocaleTimeString()}：${i.name}</div>`
   ).join('');
 }
 </script>
 </body>
 </html>
+
 
