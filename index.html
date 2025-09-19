@@ -14,9 +14,9 @@ body{
 h1{color:#ff7043;margin-bottom:8px;}
 #current{
   display:inline-block;
-  min-width:300px;
+  min-width:250px;
   max-width:90%;
-  width:500px;
+  width:auto;
   padding:20px 40px;
   margin:40px auto;
   border-radius:16px;
@@ -119,9 +119,11 @@ const allowedRooms = ["CTC"];    // 允許的房間名稱
 
 /* ---------- 餐廳清單 ---------- */
 const allRestaurants = [...new Set(`
-  老周燒肉飯,福園餡餅粥,冠宏涼麵,今年貴羹,朱麵屋,譚老爺北平麵食,中庄麵館,老闆不夠辣,蘑菇咖哩,
-快樂牛排,之澤食堂,赤山肉圓,黃記海南雞飯,悟饕便當,華新牛排,阿爸的飯,阿德飯店,嘉昌火雞肉飯,
-今日鴻,曉食記,香檳之城,萬客臨,郭記土魠魚羹,勁請享用,柒零年代,巷尾肉圓
+灶蹄蹤堂,一夫排骨,老周燒肉飯,大寮牛肉麵,福園餡餅粥,林家涼麵,花の壽司,冠宏涼麵,古早魏,古糧碳烤三明治,江鳥紅,武村風味便當,
+大咖咖哩,東港飯湯,便當爺爺,真心食坊,越錦食堂,今年貴羹,阿昇廚房,大廟口鹽水雞,鳳林山西刀削麵,八兩五骨鴨,寶麗點心廚房,
+同昌大雞腿,朱麵屋,呷飽飽創意鍋燒,林家水餃,譚老爺北平麵食,傻師傅湯餃,39 Pizza,中庄麵館,鴨鄉寶,老闆不夠辣,蘑菇咖哩,
+武士炒飯,陞 碗糕,快樂牛排,之澤食堂,上野燒肉飯,赤山肉圓,黃記海南雞飯,老江紅茶,悟饕便當,無名便當,津丼小館,米禾炒飯,
+華新牛排,阿爸的飯,阿德飯店,嘉昌火雞肉飯,今日鴻,曉食記,香檳之城,萬客臨,郭記土魠魚羹,勁請享用,柒零年代
 `.split(','))];
 
 /* ---------- DOM ---------- */
@@ -157,7 +159,7 @@ el.joinBtn.onclick = () => {
 
   const inputRoom = el.roomInput.value.trim();
   if(!allowedRooms.includes(inputRoom)){
-    alert("房間名稱必須為指定名單");
+    alert("房間名稱必須為指定名單: " + allowedRooms.join(", "));
     return;
   }
   roomId = inputRoom;
@@ -268,5 +270,3 @@ function renderHistory(list){
 </script>
 </body>
 </html>
-
-
